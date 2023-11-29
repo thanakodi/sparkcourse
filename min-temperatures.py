@@ -1,0 +1,26 @@
+from pyspark import SparkConf, SparkContext
+
+conf = SparkConf().setMaster("local").setAppName("MinTemperatures")
+sc = SparkContext(conf=conf)
+
+
+def parseline(line):
+    fields = line.split(',')
+    stationid = fields[0]
+    entrytype = fields[2]
+    temperature = float(fields[3]) * 0.1
+    return stationid, entrytype, temperature
+
+
+lines = sc.textFile("file:///SparkCourse/1800.csv")
+# parsedLines = lines.map(parseline)
+# minTemps = parsedLines.filter(lambda x: "TMIN" in x[1])
+minTemps = lines.map(parseline).filter(lambda x: "TMAX" in x[1])
+stationTemps = minTemps.map(lambda x: (x[0], x[2]))
+#stationTemps = (lines.map(parseline).filter(lambda x: "TMIN" in x[1])).map(lambda x: (x[0]. x[2]))
+minTemps = stationTemps.reduceByKey(lambda x, y: max(x, y))
+# minTemps = lines.map(parseLine).filter(lambda x: "TMIN" in x[1]).map(lambda x: (x[0]. x[2])).reduceByKey((lambda x, y: min(x,y)))
+results = minTemps.collect()
+
+for result in results:
+    print(result[0] + "\t{:.2f}C".format(result[1]))
